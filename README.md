@@ -1,7 +1,6 @@
 # k8s-lab
 
-Spin up a local three-node Kubernetes cluster on libvirt VMs — cloud-init
-provisioning, kubeadm bootstrap via Ansible, Calico CNI.
+Spins up a local three-node Kubernetes cluster on libvirt VMs with cloud-init provisioning, kubeadm bootstrap via Ansible and Calico CNI.
 
 Two shell scripts manage the VM lifecycle; one Ansible run takes the nodes from
 blank Debian cloud images to a working cluster. Built for practising cluster administration.
@@ -68,8 +67,7 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
 ./create-vms.sh --reduced-ram  # 2-node, ~4.5 GB total
 ```
 
-**3. Provision the cluster.** The VMs use password auth, so pass `--ask-pass`
-(SSH) and `--ask-become-pass` (sudo):
+**3. Provision the cluster.** 
 
 ```shell
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass
@@ -78,7 +76,7 @@ ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-beco
 For the `--reduced-ram` variant, exclude the third node:
 `--limit 'all:!k8s-w2'`.
 
-**4. Access it.** The playbook drops the admin kubeconfig on the host:
+**4. Access it.** The playbook creates the admin kubeconfig on the host:
 
 ```shell
 export KUBECONFIG=~/.kube/k8s-lab.config
