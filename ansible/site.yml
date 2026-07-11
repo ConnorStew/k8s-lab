@@ -1,0 +1,13 @@
+---
+- name: Prompt
+  import_playbook: playbooks/prompt.yml
+
+- name: Install kubeadm prerequisites
+  import_playbook: playbooks/prerequisites.yml
+
+- name: Setup cluster
+  import_playbook: playbooks/kubernetes.yml
+  vars:
+    pod_network_cidr: 10.244.0.0/16
+    calico_version: v3.32.1
+    apiserver_address: 192.168.122.10

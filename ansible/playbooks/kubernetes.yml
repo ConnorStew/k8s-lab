@@ -1,0 +1,80 @@
+---
+- name: Setup control nodes
+  become: true
+  hosts: control_plane
+  tasks:
+    - name: Kube adm init
+      ansible.builtin.command:
+        cmd: kubeadm init --apiserver-advertise-address={{ apiserver_address }} --pod-network-cidr={{ pod_network_cidr }}
+        creates: /etc/kubernetes/admin.conf
+
+    - name: Create .kube directory for the VM user
+      ansible.builtin.file:
+        path: "/home/{{ ansible_user }}/.kube"
+        state: directory
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0755'
+
+    - name: Give the VM user the admin kube config
+      ansible.builtin.copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "/home/{{ ansible_user }}/.kube/config"
+        remote_src: true
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
+    - name: Generate join token
+      register: join_token
+      changed_when: false
+      ansible.builtin.command:
+        cmd: kubeadm token create --print-join-command
+
+- name: Join worker nodes
+  become: true
+  hosts: workers
+  tasks:
+    - name: Join worker
+      ansible.builtin.command:
+        cmd: "{{ hostvars[groups['control_plane'][0]].join_token.stdout }}"
+        creates: /etc/kubernetes/kubelet.conf
+
+- name: Install calico
+  # The VM user has the admin kube config.
+  become: false
+  hosts: control_plane
+  tasks:
+    - name: Download Calico operator manifest
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/projectcalico/calico/{{ calico_version }}/manifests/tigera-operator.yaml
+        dest: /tmp/tigera-operator.yaml
+        mode: '0600' # Read and write just for the owner.
+
+    - name: Apply Calico operator manifest
+      kubernetes.core.k8s:
+        state: present
+        src: /tmp/tigera-operator.yaml
+
+    # The kustomize lookup runs on the ansible host.
+    - name: Apply Calico custom resources manifest via kustomize
+      kubernetes.core.k8s:
+        definition: "{{ lookup('kubernetes.core.kustomize', dir=playbook_dir + '/../../calico') }}"
+        state: present
+      register: apply_calico
+      until: apply_calico is succeeded
+      retries: 10
+      delay: 5
+
+- name: Fetch kubeconfig for local kubectl/helm access
+  become: false
+  hosts: control_plane
+  tasks:
+    # Fetched as a separate file so it never clobbers an existing
+    # ~/.kube/config. Use it with:
+    #   export KUBECONFIG=~/.kube/k8s-lab.config
+    - name: Fetch admin kubeconfig to local user
+      ansible.builtin.fetch:
+        src: "{{ ansible_facts['env']['HOME'] }}/.kube/config"
+        dest: "{{ lookup('env', 'HOME') }}/.kube/k8s-lab.config"
+        flat: true

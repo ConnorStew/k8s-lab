@@ -1,0 +1,31 @@
+---
+- name: Set default shell to bash
+  hosts: all
+  become: true
+  tasks:
+    - name: Set bash as default shell for the VM user
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        shell: /bin/bash
+
+- name: Set prompt color on control plane
+  hosts: control_plane
+  become: false
+  tasks:
+    - name: Set PS1 in bashrc
+      ansible.builtin.lineinfile:
+        path: ~/.bashrc
+        line: 'PS1="\[\033[1;31m\]\u@\h\[\033[0m\]:\w\$ "'
+        regexp: '^PS1='
+        insertafter: EOF
+
+- name: Set prompt color on workers
+  hosts: workers
+  become: false
+  tasks:
+    - name: Set PS1 in bashrc
+      ansible.builtin.lineinfile:
+        path: ~/.bashrc
+        line: 'PS1="\[\033[1;34m\]\u@\h\[\033[0m\]:\w\$ "'
+        regexp: '^PS1='
+        insertafter: EOF

@@ -1,0 +1,10 @@
+resources:
+ - https://raw.githubusercontent.com/projectcalico/calico/v3.32.1/manifests/custom-resources.yaml
+
+patches:
+ - target:
+      group: operator.tigera.io
+      version: v1
+      kind: Installation
+      name: default
+   path: calico-patch.yaml
