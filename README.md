@@ -67,7 +67,7 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
 ./create-vms.sh --reduced-ram  # 2-node, ~4.5 GB total
 ```
 
-**3. Provision the cluster.** 
+**3. Provision the cluster.**:
 
 ```shell
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass
