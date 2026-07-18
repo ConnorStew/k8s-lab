@@ -1,0 +1,11 @@
+apiVersion: v2
+name: lab
+description: Container lab utilities.
+
+type: application
+version: 1.0.0
+
+dependencies:
+  - name: headlamp
+    version: 0.43.0
+    repository: https://kubernetes-sigs.github.io/headlamp/

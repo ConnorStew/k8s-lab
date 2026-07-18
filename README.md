@@ -70,13 +70,29 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
 **3. Provision the cluster.**:
 
 ```shell
+cd ansible
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass
 ```
 
 For the `--reduced-ram` variant, exclude the third node:
 `--limit 'all:!k8s-w2'`.
 
-**4. Access it.** The playbook creates the admin kubeconfig on the host:
+
+**4 Install the lab helm chart.** Current used for headlamp web UI:
+```shell
+cd helm/lab
+helm dependency build
+helm install lab . -n lab --create-namespace
+```
+
+This uses a NodePort service to expose the web UI, access it here: `http://<node-ip>:3007`
+
+You'll need to generate a service account token for each login, using kubectl:
+```shell
+kubectl create token headlamp -n lab
+```
+
+**5. Access kubectl.** The playbook creates the admin kubeconfig on the host:
 
 ```shell
 export KUBECONFIG=~/.kube/k8s-lab.config

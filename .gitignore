@@ -1,3 +1,4 @@
 isos/*.qcow2
 isos/*.iso
 .ansible
+helm/lab/charts

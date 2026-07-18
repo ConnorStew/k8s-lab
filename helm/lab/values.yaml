@@ -1,0 +1,16 @@
+headlamp:
+  serviceAccount:
+    create: true
+    name: headlamp
+
+  # Giving headlamp view access to the cluster only.
+  clusterRoleBinding:
+    create: true
+    clusterRoleName: view
+
+  # Expose the UI on a NodePort.
+  # TODO: Update this to an ingress once one is setup.
+  service:
+    type: NodePort
+    port: 80
+    nodePort: 30007
