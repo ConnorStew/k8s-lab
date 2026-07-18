@@ -70,7 +70,6 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
 **3. Provision the cluster.**:
 
 ```shell
-cd ansible
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass
 ```
 
