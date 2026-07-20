@@ -30,7 +30,7 @@ plane + 1.5 GB worker, ~4.5 GB total) for lower-spec hosts.
    `virt-install`, then polls with `ssh-keyscan` until every node is reachable
    and its host key is in `known_hosts`.
 2. **`ansible/site.yml`** then:
-   - installs containerd, kubelet, kubeadm, and kubectl, enables the CRI and
+   - installs containerd, kubelet, kubeadm, kubectl and extra clis, enables the CRI and
      `SystemdCgroup` in containerd, and turns on `ip_forward` (`prerequisites.yml`)
    - runs `kubeadm init` on the control plane, generates a join token, and
      joins the workers (`kubernetes.yml`) — all guarded with `creates:` so
