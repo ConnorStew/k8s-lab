@@ -109,3 +109,12 @@
         name: kubelet
         state: started
         enabled: true
+
+- name: Install control plane extras
+  become: true
+  hosts: control_plane
+  tasks:
+    - name: Install etcd-client
+      ansible.builtin.apt:
+        name: etcd-client
+        state: present
