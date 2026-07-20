@@ -114,7 +114,30 @@
   become: true
   hosts: control_plane
   tasks:
-    - name: Install etcd-client
-      ansible.builtin.apt:
-        name: etcd-client
-        state: present
+    - name: Get kubeadm's pinned image versions
+      ansible.builtin.command:
+        cmd: kubeadm config images list
+      changed_when: false
+      register: kubeadm_images
+
+    - name: Derive etcd version from kubeadm
+      ansible.builtin.set_fact:
+        # registry.k8s.io/etcd:3.6.8-0 -> v3.6.8
+        etcd_version: "v{{ kubeadm_images.stdout | regex_search('etcd:([0-9.]+)', '\\1') | first }}"
+
+    - name: Download etcd release tarball
+      ansible.builtin.get_url:
+        url: "https://github.com/etcd-io/etcd/releases/download/{{ etcd_version }}/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+        dest: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+        mode: '0644'
+
+    - name: Install etcdctl and etcdutl
+      ansible.builtin.unarchive:
+        src: "/tmp/etcd-{{ etcd_version }}-linux-amd64.tar.gz"
+        dest: /usr/local/bin
+        remote_src: true
+        extra_opts:
+          - --strip-components=1
+          - --wildcards
+          - '*/etcdctl'
+          - '*/etcdutl'
