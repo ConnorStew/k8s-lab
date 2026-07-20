@@ -94,12 +94,13 @@
         signed_by: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
         state: present
 
-    - name: Install kubeadm, kubelet, kubectl
+    - name: Install kubeadm, kubelet, kubectl and cri-tools
       ansible.builtin.apt:
         name:
           - kubelet
           - kubeadm
           - kubectl
+          - cri-tools
         state: present
         update_cache: true
 
