@@ -4,6 +4,8 @@
 
 - name: Install kubeadm prerequisites
   import_playbook: playbooks/prerequisites.yml
+  vars:
+    k8s_version: "1.35"
 
 - name: Setup cluster
   import_playbook: playbooks/kubernetes.yml
