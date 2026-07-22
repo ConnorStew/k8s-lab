@@ -9,3 +9,6 @@ dependencies:
   - name: headlamp
     version: 0.43.0
     repository: https://kubernetes-sigs.github.io/headlamp/
+  - name: metrics-server
+    version: 3.13.1
+    repository: https://kubernetes-sigs.github.io/metrics-server/

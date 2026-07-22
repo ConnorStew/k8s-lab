@@ -2,5 +2,8 @@ dependencies:
 - name: headlamp
   repository: https://kubernetes-sigs.github.io/headlamp/
   version: 0.43.0
-digest: sha256:db1b43a8872b55d878fc03c06374f284baf028154e783c5c1755ad5a77437a87
-generated: "2026-07-18T15:33:20.592736891+01:00"
+- name: metrics-server
+  repository: https://kubernetes-sigs.github.io/metrics-server/
+  version: 3.13.1
+digest: sha256:dcec6249b960e53f91c0ee51e787b0d746ad9a08f99e2ba3e77dccfba6ce3f52
+generated: "2026-07-22T20:14:30.955680826+01:00"

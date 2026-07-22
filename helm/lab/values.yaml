@@ -14,3 +14,8 @@ headlamp:
     type: NodePort
     port: 80
     nodePort: 30007
+
+metrics-server:
+  args:
+    # Lab cluster: kubelet serving certs are kubeadm's self-signed defaults with no IP SANs.
+    - --kubelet-insecure-tls
