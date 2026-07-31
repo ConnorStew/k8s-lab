@@ -15,6 +15,24 @@ headlamp:
     port: 80
     nodePort: 30007
 
+  # This allows us to make sure both replicas run on different pods, to allow us to drain nodes with the pod disruption budget.
+  # Since this is preferred a drained pod will still schedule on the same node if one of the two nodes is down.
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: headlamp
+            topologyKey: kubernetes.io/hostname
+
+  replicaCount: 2
+
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
 metrics-server:
   args:
     # Lab cluster: kubelet serving certs are kubeadm's self-signed defaults with no IP SANs.
