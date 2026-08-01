@@ -1,17 +1,10 @@
 # k8s-lab
 
-Spins up a local three-node Kubernetes cluster on libvirt VMs with cloud-init provisioning, kubeadm bootstrap via Ansible and Calico CNI.
+Spins up a local Kubernetes cluster on libvirt VMs with cloud-init provisioning, kubeadm bootstrap via Ansible and Calico CNI.
 
-Two shell scripts manage the VM lifecycle; one Ansible run takes the nodes from
-blank Debian cloud images to a working cluster. Built for practising cluster administration.
+Two shell scripts manage the VM lifecycle; one Ansible run takes the nodes from blank Debian cloud images to a working cluster. Built for practising cluster administration.
 
 ## Cluster topology
-
-| VM | Role | vCPUs | RAM | IP |
-|----|------|-------|-----|----|
-| `k8s-cp` | Control plane | 2 | 4 GB | 192.168.122.10 |
-| `k8s-w1` | Worker | 2 | 2 GB | 192.168.122.11 |
-| `k8s-w2` | Worker | 2 | 2 GB | 192.168.122.12 |
 
 - **OS**: Debian 13 (Trixie) cloud image
 - **Network**: libvirt default NAT (`virbr0`, `192.168.122.0/24`)
@@ -19,10 +12,27 @@ blank Debian cloud images to a working cluster. Built for practising cluster adm
 - **CNI**: Calico (operator install, pod CIDR patched via kustomize)
 - **VM user**: `debian`, password auth (set at VM-creation time, never stored)
 
-`create-vms.sh --reduced-ram` builds a two-node variant instead (3 GB control
-plane + 1.5 GB worker, ~4.5 GB total) for lower-spec hosts.
+# Default
+Default cluster configuration:
 
-`create-vms.sh --ha` builds a HA variant. Three control plane nodes behind an HAProxy VM, which becomes the kubeadm control plane endpoint:
+| VM | Role | vCPUs | RAM | IP |
+|----|------|-------|-----|----|
+| `k8s-cp` | Control plane | 2 | 4 GB | 192.168.122.10 |
+| `k8s-w1` | Worker | 2 | 2 GB | 192.168.122.11 |
+| `k8s-w2` | Worker | 2 | 2 GB | 192.168.122.12 |
+
+
+## Reduced RAM
+A reduced ram variant for lower spec hosts:
+
+| VM | Role | vCPUs | RAM | IP |
+|----|------|-------|-----|----|
+| `k8s-cp` | Control plane | 2 | 4 GB | 192.168.122.10 |
+| `k8s-w1` | Worker | 2 | 2 GB | 192.168.122.11 |
+
+
+## HA
+A HA variant with three control plane nodes behind an HAProxy VM, which becomes the kubeadm control plane endpoint:
 
 | VM | Role | vCPUs | RAM | IP |
 |----|------|-------|-----|----|
@@ -41,15 +51,11 @@ plane + 1.5 GB worker, ~4.5 GB total) for lower-spec hosts.
    `virt-install`, then polls with `ssh-keyscan` until every node is reachable
    and its host key is in `known_hosts`.
 2. **`ansible/site.yml`** then:
-   - installs containerd, kubelet, kubeadm, kubectl and extra clis, enables the CRI and
-     `SystemdCgroup` in containerd, and turns on `ip_forward` (`prerequisites.yml`)
-   - runs `kubeadm init` on the control plane, generates a join token, and
-     joins the workers (`kubernetes.yml`) - all guarded with `creates:` so
-     re-runs are idempotent
-   - installs Calico via the Tigera operator, with the pod CIDR patched to
+   - Installs prerequisites and any configuration needed for nodes and the load balancer, if using HA.
+   - Initialises kubernetes nodes and joins them to the cluster.
+   - Installs Calico via the Tigera operator, with the pod CIDR patched to
      `10.244.0.0/16` through the kustomization in [`calico/`](calico/)
-   - fetches the admin kubeconfig to `~/.kube/k8s-lab.config` on the host
-     (a separate file, so your existing `~/.kube/config` is never touched)
+   - Fetches the admin kubeconfig to `~/.kube/k8s-lab.config` on the host.
 
 ## Host requirements
 
@@ -64,25 +70,31 @@ ansible-galaxy collection install -r requirements.yml
 
 ## Usage
 
-**1. Download the base image** (Debian cloud image, qcow2 flavour) into `isos/`:
+**1. Download the base image**
+The lab uses a Debian cloud image, qcow2 flavour, saved into `isos/`:
 
 ```shell
 curl -Lo isos/debian-13-generic-amd64.qcow2 \
     https://cdimage.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2
 ```
 
-**2. Create the VMs** - prompts once for the password the `debian` user gets:
+**2. Create the VMs**
+Prompts once for the password the `debian` user gets:
 
 ```shell
-./create-vms.sh                # 3-node cluster
-./create-vms.sh --reduced-ram  # 2-node, ~4.5 GB total
-./create-vms.sh --ha           # 5-node, HA cluster, with load balancer
+# Default
+./create-vms.sh
+
+# Reduced Ram
+./create-vms.sh --reduced-ram 
+
+# HA
+./create-vms.sh --ha
 ```
 
 **3. Provision the cluster**:
 
 ```shell
-
 # Default
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass
 
@@ -93,32 +105,29 @@ ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-beco
 ansible-playbook -i ansible/inventory.ini -i ansible/inventory-ha.ini ansible/site.yml --ask-pass --ask-become-pass
 ```
 
-**4 Install the lab helm chart.** Current used for headlamp web UI:
+**4. Install the lab helm chart.**
 ```shell
 cd helm/lab
 helm dependency build
 helm install lab . -n lab --create-namespace
 ```
 
-This uses a NodePort service to expose the web UI, access it here: `http://<node-ip>:3007`
+The chart uses a NodePort service to expose the headlamp web UI, access it here: `http://<node-ip>:3007`
 
 You'll need to generate a service account token for each login, using kubectl:
 ```shell
 kubectl create token headlamp -n lab
 ```
 
-**5. Access kubectl.** The playbook creates the admin kubeconfig on the host:
-
+**5. Access kubectl.** 
+The playbook creates the admin kubeconfig on the host:
 ```shell
 export KUBECONFIG=~/.kube/k8s-lab.config
 kubectl get nodes
 ```
 
-Or SSH straight in: `ssh debian@192.168.122.10`.
-
-**Teardown** - destroys the VMs, their disks, and the fetched kubeconfig
-(the base image is kept):
-
+**Teardown**
+This shell script destroys the VMs, their disks, and the fetched kubeconfig (the base image is kept):
 ```shell
 ./delete-vms.sh
 ```
