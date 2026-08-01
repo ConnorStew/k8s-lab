@@ -1,0 +1,43 @@
+global
+    log /dev/log    local0
+    log /dev/log    local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log     global
+    mode    tcp
+    option  tcplog
+    option  dontlognull
+    option  redispatch
+    retries 1
+    timeout connect 5s
+    timeout client  35s
+    timeout server  35s
+    timeout queue   20s
+    timeout check   10s
+
+# apiserver frontend which proxys to the control plane nodes
+frontend apiserver
+    bind *:{{ apiserver_port }}
+    mode tcp
+    option tcplog
+    default_backend apiserverbackend
+
+# round robin balancing for apiserver
+backend apiserverbackend
+    option httpchk
+
+    http-check connect ssl
+    http-check send meth GET uri /healthz
+    http-check expect status 200
+
+    mode tcp
+    balance     roundrobin
+{% for host in groups['control_plane'] %}
+    server {{ host }} {{ hostvars[host]['ansible_host'] }}:{{ apiserver_port }} check verify none
+{% endfor %}

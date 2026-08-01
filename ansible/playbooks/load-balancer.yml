@@ -2,6 +2,14 @@
 - name: Install prerequisites
   become: true
   hosts: load_balancer
+  vars:
+    apiserver_port: 6443
+
+  handlers:
+    - name: Reload HAProxy
+      ansible.builtin.service:
+        name: haproxy
+        state: reloaded
 
   tasks:
     - name: Install HAProxy
@@ -9,3 +17,11 @@
         name: haproxy
         state: present
         update_cache: true
+
+    - name: Deploy HAProxy config
+      ansible.builtin.template:
+        src: ../config/haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+        mode: '0644'
+        validate: haproxy -c -f %s
+      notify: Reload HAProxy
