@@ -71,6 +71,7 @@ ansible-galaxy collection install -r requirements.yml
 ## Usage
 
 **1. Download the base image**
+
 The lab uses a Debian cloud image, qcow2 flavour, saved into `isos/`:
 
 ```shell
@@ -79,6 +80,7 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
 ```
 
 **2. Create the VMs**
+
 Prompts once for the password the `debian` user gets:
 
 ```shell
@@ -120,6 +122,7 @@ kubectl create token headlamp -n lab
 ```
 
 **5. Access kubectl.** 
+
 The playbook creates the admin kubeconfig on the host:
 ```shell
 export KUBECONFIG=~/.kube/k8s-lab.config
@@ -127,6 +130,7 @@ kubectl get nodes
 ```
 
 **Teardown**
+
 This shell script destroys the VMs, their disks, and the fetched kubeconfig (the base image is kept):
 ```shell
 ./delete-vms.sh
