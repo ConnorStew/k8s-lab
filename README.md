@@ -46,12 +46,12 @@ An HA variant with three control plane nodes behind an HAProxy VM, which becomes
 
 ## How it works
 
-1. **`create-vms.sh`**:
+1. Create the VMs with the `create-vms.sh` script:
    - Creates a qcow2 overlay per node on top of a single shared base image (no disk duplication).
    - Builds a cloud-init seed ISO per node (hostname, static IP, user + password hash).
    - Boots each VM with `virt-install`.
    - Polls with `ssh-keyscan` until every node is reachable and its host key is in `known_hosts`.
-2. **`ansible/site.yml`**:
+2. Provision the VMs with ansible:
    - Defaults to bash shell and sets bash colors differently for VM roles to tell them apart easily when sshing.
    - Installs prerequisites and any configuration needed for nodes and the load balancer.
      - Includes `etcdctl`/`etcdutl` on control plane nodes for etcd backup/restore practice.
