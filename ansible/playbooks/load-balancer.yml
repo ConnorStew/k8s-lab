@@ -4,9 +4,8 @@
   hosts: load_balancer
 
   tasks:
-    - name: Install dependencies
+    - name: Install HAProxy
       ansible.builtin.apt:
-        name:
-          - haproxy
+        name: haproxy
         state: present
         update_cache: true
