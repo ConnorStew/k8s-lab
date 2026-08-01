@@ -4,12 +4,9 @@
 
 - name: Install kubeadm prerequisites
   import_playbook: playbooks/prerequisites.yml
-  vars:
-    k8s_version: "1.35"
+
+- name: Setup load balancer
+  import_playbook: playbooks/load-balancer.yml
 
 - name: Setup cluster
   import_playbook: playbooks/kubernetes.yml
-  vars:
-    pod_network_cidr: 10.244.0.0/16
-    calico_version: v3.32.1
-    apiserver_address: 192.168.122.10

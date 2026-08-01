@@ -1,10 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-REDUCED_RAM=false
-if [[ "${1:-}" == "--reduced-ram" ]]; then
-    REDUCED_RAM=true
-fi
+TOPOLOGY=default
+case "${1:-}" in
+    "") ;;
+    --reduced-ram) TOPOLOGY=reduced-ram ;;
+    --ha) TOPOLOGY=ha ;;
+    *)
+        echo "Unknown option: $1" >&2
+        echo "Usage: $0 [--reduced-ram | --ha]" >&2
+        exit 1
+        ;;
+esac
 
 ISOS_DIR="$(realpath "$(dirname "$0")/isos")"
 BASE_IMAGE="$ISOS_DIR/debian-13-generic-amd64.qcow2"
@@ -17,26 +24,45 @@ echo
 PASSWORD_HASH=$(openssl passwd -6 "$PASSWORD_INPUT")
 
 declare -A NODE_IPS=(
+    [k8s-lb]=192.168.122.9
     [k8s-cp]=192.168.122.10
     [k8s-w1]=192.168.122.11
     [k8s-w2]=192.168.122.12
+    [k8s-cp2]=192.168.122.13
+    [k8s-cp3]=192.168.122.14
 )
 
-if $REDUCED_RAM; then
-    echo "Using reduced RAM configuration (2-node cluster, 4.5 GB total)"
-    declare -A NODE_MEM=(
-        [k8s-cp]=3072
-        [k8s-w1]=1536
-    )
-    NODES=(k8s-cp k8s-w1)
-else
-    declare -A NODE_MEM=(
-        [k8s-cp]=4096
-        [k8s-w1]=2048
-        [k8s-w2]=2048
-    )
-    NODES=(k8s-cp k8s-w1 k8s-w2)
-fi
+case "$TOPOLOGY" in
+    reduced-ram)
+        echo "Using reduced RAM configuration (2-node cluster, 4.5 GB total)"
+        declare -A NODE_MEM=(
+            [k8s-cp]=3072
+            [k8s-w1]=1536
+        )
+        NODES=(k8s-cp k8s-w1)
+        ;;
+    ha)
+        echo "Using HA configuration (6-node cluster, ~17 GB total)"
+        declare -A NODE_MEM=(
+            [k8s-lb]=1024
+            [k8s-cp]=4096
+            [k8s-cp2]=4096
+            [k8s-cp3]=4096
+            [k8s-w1]=2048
+            [k8s-w2]=2048
+        )
+        # The load balancer first, so it is up before kubeadm needs it.
+        NODES=(k8s-lb k8s-cp k8s-cp2 k8s-cp3 k8s-w1 k8s-w2)
+        ;;
+    *)
+        declare -A NODE_MEM=(
+            [k8s-cp]=4096
+            [k8s-w1]=2048
+            [k8s-w2]=2048
+        )
+        NODES=(k8s-cp k8s-w1 k8s-w2)
+        ;;
+esac
 
 for NODE in "${NODES[@]}"; do
     NODE_QCOW2="$ISOS_DIR/$NODE.qcow2"

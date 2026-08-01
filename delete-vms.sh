@@ -2,10 +2,10 @@
 set -euo pipefail
 
 ISOS_DIR="$(realpath "$(dirname "$0")/isos")"
-NODES=(k8s-cp k8s-w1 k8s-w2)
+NODES=(k8s-lb k8s-cp k8s-cp2 k8s-cp3 k8s-w1 k8s-w2)
 
 for NODE in "${NODES[@]}"; do
-    # Skip nodes that don't exist (e.g. k8s-w2 with --reduced-ram)
+    # Skip nodes that don't exist.
     if ! sudo virsh dominfo "$NODE" &>/dev/null; then
         echo "$NODE not defined, skipping..."
         continue

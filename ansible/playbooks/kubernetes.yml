@@ -1,11 +1,21 @@
 ---
-- name: Setup control nodes
+- name: Setup first control plane node
   become: true
-  hosts: control_plane
+  hosts: control_plane_primary
+  vars:
+    # Use the load balancer IP if in ha, otherwise use the single control plane node.
+    control_plane_endpoint: >-
+      {{ (hostvars[groups['load_balancer'][0]].ansible_host
+          if groups['load_balancer'] | length > 0
+          else primary_apiserver_address) ~ ':' ~ apiserver_port }}
   tasks:
     - name: Kube adm init
       ansible.builtin.command:
-        cmd: kubeadm init --apiserver-advertise-address={{ apiserver_address }} --pod-network-cidr={{ pod_network_cidr }}
+        cmd: >-
+          kubeadm init
+          --control-plane-endpoint={{ control_plane_endpoint }}
+          --apiserver-advertise-address={{ primary_apiserver_address }}
+          --pod-network-cidr={{ pod_network_cidr }}
         creates: /etc/kubernetes/admin.conf
 
     - name: Create .kube directory for the VM user
@@ -25,25 +35,33 @@
         group: "{{ ansible_user }}"
         mode: '0600'
 
-    - name: Generate join token
-      register: join_token
+    - name: Upload control-plane certs and capture the key
+      ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+      register: upload_certs
+      changed_when: true
+
+    - name: Get the base join command
+      ansible.builtin.command: kubeadm token create --print-join-command
+      register: join_cmd
+      changed_when: false
+
+    - name: Build the control-plane join command
+      ansible.builtin.set_fact:
+        cp_join_cmd: >-
+          {{ join_cmd.stdout }}
+          --control-plane
+          --certificate-key {{ upload_certs.stdout_lines[-1] | trim }}
+
+    - name: Generate worker join command
+      register: worker_join_token
       changed_when: false
       ansible.builtin.command:
         cmd: kubeadm token create --print-join-command
 
-- name: Join worker nodes
-  become: true
-  hosts: workers
-  tasks:
-    - name: Join worker
-      ansible.builtin.command:
-        cmd: "{{ hostvars[groups['control_plane'][0]].join_token.stdout }}"
-        creates: /etc/kubernetes/kubelet.conf
-
 - name: Install calico
   # The VM user has the admin kube config.
   become: false
-  hosts: control_plane
+  hosts: control_plane_primary
   tasks:
     - name: Download Calico operator manifest
       ansible.builtin.get_url:
@@ -66,9 +84,27 @@
       retries: 10
       delay: 5
 
+- name: Join secondary control plane nodes
+  become: true
+  hosts: control_plane_secondary
+  tasks:
+    - name: Join secondary control plane node
+      ansible.builtin.command:
+        cmd: "{{ hostvars[groups['control_plane_primary'][0]].cp_join_cmd }}"
+        creates: /etc/kubernetes/kubelet.conf
+
+- name: Join worker nodes
+  become: true
+  hosts: workers
+  tasks:
+    - name: Join worker
+      ansible.builtin.command:
+        cmd: "{{ hostvars[groups['control_plane_primary'][0]].worker_join_token.stdout }}"
+        creates: /etc/kubernetes/kubelet.conf
+
 - name: Fetch kubeconfig for local kubectl/helm access
   become: false
-  hosts: control_plane
+  hosts: control_plane_primary
   tasks:
     # Fetched as a separate file so it never clobbers an existing
     # ~/.kube/config. Use it with:

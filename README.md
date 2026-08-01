@@ -22,6 +22,17 @@ blank Debian cloud images to a working cluster. Built for practising cluster adm
 `create-vms.sh --reduced-ram` builds a two-node variant instead (3 GB control
 plane + 1.5 GB worker, ~4.5 GB total) for lower-spec hosts.
 
+`create-vms.sh --ha` builds a HA variant. Three control plane nodes behind an HAProxy VM, which becomes the kubeadm control plane endpoint:
+
+| VM | Role | vCPUs | RAM | IP |
+|----|------|-------|-----|----|
+| `k8s-lb` | HAProxy (TCP :6443) | 2 | 1 GB | 192.168.122.9 |
+| `k8s-cp` | Control plane (first) | 2 | 4 GB | 192.168.122.10 |
+| `k8s-cp2` | Control plane | 2 | 4 GB | 192.168.122.13 |
+| `k8s-cp3` | Control plane | 2 | 4 GB | 192.168.122.14 |
+| `k8s-w1` | Worker | 2 | 2 GB | 192.168.122.11 |
+| `k8s-w2` | Worker | 2 | 2 GB | 192.168.122.12 |
+
 ## How it works
 
 1. **`create-vms.sh`** creates a qcow2 overlay per node on top of a single
@@ -63,19 +74,27 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
 **2. Create the VMs** — prompts once for the password the `debian` user gets:
 
 ```shell
-./create-vms.sh              # 3-node cluster
+./create-vms.sh                # 3-node cluster
 ./create-vms.sh --reduced-ram  # 2-node, ~4.5 GB total
+./create-vms.sh --ha           # 5-node, HA cluster, with load balancer
 ```
 
 **3. Provision the cluster.**:
 
+- Default:
 ```shell
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass
 ```
 
-For the `--reduced-ram` variant, exclude the third node:
-`--limit 'all:!k8s-w2'`.
+- Reduced Ram:
+```shell
+ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass --limit 'all:!k8s-w2'
+```
 
+- HA:
+```shell
+ansible-playbook -i ansible/inventory.ini -i ansible/inventory-ha.ini ansible/site.yml --ask-pass --ask-become-pass
+```
 
 **4 Install the lab helm chart.** Current used for headlamp web UI:
 ```shell
