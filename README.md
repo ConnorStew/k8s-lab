@@ -11,8 +11,9 @@ Two shell scripts manage the VM lifecycle; one Ansible run takes the nodes from 
 - **Runtime**: containerd (from Docker's apt repo, `SystemdCgroup` enabled)
 - **CNI**: Calico (operator install, pod CIDR patched via kustomize)
 - **VM user**: `debian`, password auth (set at VM-creation time, never stored)
+- **Kubernetes Version**: Set to 1.35, configurable in: `ansible/group_vars/all.yml`.
 
-# Default
+### Default
 Default cluster configuration:
 
 | VM | Role | vCPUs | RAM | IP |
@@ -22,16 +23,16 @@ Default cluster configuration:
 | `k8s-w2` | Worker | 2 | 2 GB | 192.168.122.12 |
 
 
-## Reduced RAM
+### Reduced RAM
 A reduced ram variant for lower spec hosts:
 
 | VM | Role | vCPUs | RAM | IP |
 |----|------|-------|-----|----|
-| `k8s-cp` | Control plane | 2 | 4 GB | 192.168.122.10 |
-| `k8s-w1` | Worker | 2 | 2 GB | 192.168.122.11 |
+| `k8s-cp` | Control plane | 2 | 3 GB | 192.168.122.10 |
+| `k8s-w1` | Worker | 2 | 1.5 GB | 192.168.122.11 |
 
 
-## HA
+### HA
 A HA variant with three control plane nodes behind an HAProxy VM, which becomes the kubeadm control plane endpoint:
 
 | VM | Role | vCPUs | RAM | IP |
@@ -51,8 +52,10 @@ A HA variant with three control plane nodes behind an HAProxy VM, which becomes 
    `virt-install`, then polls with `ssh-keyscan` until every node is reachable
    and its host key is in `known_hosts`.
 2. **`ansible/site.yml`** then:
+   - Sets bash colors differently for VM roles to tell them apart easily when sshing.
    - Installs prerequisites and any configuration needed for nodes and the load balancer, if using HA.
-   - Initialises kubernetes nodes and joins them to the cluster.
+     - Includes `etcdctl`/`etcdutl` on control plane nodes for etcd backup/restore practice.
+   - Initialises Kubernetes nodes and joins them to the cluster.
    - Installs Calico via the Tigera operator, with the pod CIDR patched to
      `10.244.0.0/16` through the kustomization in [`calico/`](calico/)
    - Copies the admin kubeconfig to `~/.kube/k8s-lab.config` on the host.
@@ -62,7 +65,7 @@ A HA variant with three control plane nodes behind an HAProxy VM, which becomes 
 One-time setup, using Arch packages:
 
 ```shell
-sudo pacman -S qemu-full libvirt virt-install dnsmasq cloud-image-utils ansible kustomize
+sudo pacman -S qemu-full libvirt virt-install dnsmasq cloud-image-utils ansible kustomize helm kubectl
 sudo systemctl enable --now libvirtd
 sudo usermod -aG libvirt "$USER"
 ansible-galaxy collection install -r requirements.yml
@@ -109,14 +112,13 @@ ansible-playbook -i ansible/inventory.ini -i ansible/inventory-ha.ini ansible/si
 
 **4. Install the lab helm chart**
 ```shell
-cd helm/lab
-helm dependency build
-helm install lab . -n lab --create-namespace
+helm dependency build helm/lab
+helm install lab helm/lab -n lab --create-namespace
 ```
 
 Currently deploys headlamp and metrics-server.
 
-The chart uses a NodePort service to expose the headlamp web UI, access it here: `http://<node-ip>:3007`
+The chart uses a NodePort service to expose the headlamp web UI, access it here: `http://<node-ip>:30007`
 
 You'll need to generate a service account token for each login, using kubectl:
 ```shell
@@ -140,14 +142,10 @@ This shell script destroys the VMs, their disks, and the fetched kubeconfig (the
 
 ## Networking
 
-The VMs sit on libvirt's default NAT network (`192.168.122.0/24`) - they can
-reach the internet, but are only reachable from the host.
+The VMs sit on libvirt's default NAT network (`192.168.122.0/24`) - they can reach the internet, but are only reachable from the host.
 
-The pod network CIDR (`10.244.0.0/16`) must not overlap the VM network, and is
-set in two places that have to match: `ansible/site.yml` and the kustomize
-patch in `calico/calico-patch.yaml`.
+The pod network CIDR (`10.244.0.0/16`) must not overlap the VM network, and is set in two places that have to match: `ansible/group_vars/all.yml` and the kustomize patch in `calico/calico-patch.yaml`.
 
 ## Troubleshooting
 
-Known host-side issues (libvirt/Docker firewall conflict, home-directory
-permissions) are documented in [troubleshooting.md](troubleshooting.md).
+Known host-side issues (libvirt/Docker firewall conflict, home-directory permissions) are documented in [troubleshooting.md](troubleshooting.md).
