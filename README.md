@@ -79,7 +79,7 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
 ./create-vms.sh --ha           # 5-node, HA cluster, with load balancer
 ```
 
-**3. Provision the cluster.**:
+**3. Provision the cluster**:
 
 - Default:
 ```shell
