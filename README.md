@@ -51,7 +51,7 @@ An HA variant with three control plane nodes behind an HAProxy VM, which becomes
    - Builds a cloud-init seed ISO per node (hostname, static IP, user + password hash).
    - Boots each VM with `virt-install`.
    - Polls with `ssh-keyscan` until every node is reachable and its host key is in `known_hosts`.
-2. **`ansible/site.yml`** then:
+2. **`ansible/site.yml`**:
    - Defaults to bash shell and sets bash colors differently for VM roles to tell them apart easily when sshing.
    - Installs prerequisites and any configuration needed for nodes and the load balancer.
      - Includes `etcdctl`/`etcdutl` on control plane nodes for etcd backup/restore practice.
