@@ -7,14 +7,14 @@
     control_plane_endpoint: >-
       {{ (hostvars[groups['load_balancer'][0]].ansible_host
           if groups['load_balancer'] | length > 0
-          else apiserver_address) ~ ':' ~ apiserver_port }}
+          else primary_apiserver_address) ~ ':' ~ apiserver_port }}
   tasks:
     - name: Kube adm init
       ansible.builtin.command:
         cmd: >-
           kubeadm init
           --control-plane-endpoint={{ control_plane_endpoint }}
-          --apiserver-advertise-address={{ apiserver_address }}
+          --apiserver-advertise-address={{ primary_apiserver_address }}
           --pod-network-cidr={{ pod_network_cidr }}
         creates: /etc/kubernetes/admin.conf
 
