@@ -1,0 +1,12 @@
+---
+- name: Install prerequisites
+  become: true
+  hosts: load_balancer
+
+  tasks:
+    - name: Install dependencies
+      ansible.builtin.apt:
+        name:
+          - haproxy
+        state: present
+        update_cache: true
