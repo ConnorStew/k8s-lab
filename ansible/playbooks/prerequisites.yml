@@ -1,7 +1,7 @@
 ---
 - name: Install prerequisites
   become: true
-  hosts: all
+  hosts: cluster
   handlers:
     - name: Restart containerd
       ansible.builtin.service:

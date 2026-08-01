@@ -1,11 +1,21 @@
 ---
-- name: Setup control nodes
+- name: Setup first control plane node
   become: true
-  hosts: control_plane
+  hosts: control_plane_primary
+  vars:
+    # Use the load balancer IP if in ha, otherwise use the single control plane node.
+    control_plane_endpoint: >-
+      {{ hostvars[groups['load_balancer'][0]].ansible_host
+         if groups['load_balancer'] | length > 0
+         else apiserver_address }}
   tasks:
     - name: Kube adm init
       ansible.builtin.command:
-        cmd: kubeadm init --apiserver-advertise-address={{ apiserver_address }} --pod-network-cidr={{ pod_network_cidr }}
+        cmd: >-
+          kubeadm init
+          --control-plane-endpoint={{ control_plane_endpoint }}
+          --apiserver-advertise-address={{ apiserver_address }}
+          --pod-network-cidr={{ pod_network_cidr }}
         creates: /etc/kubernetes/admin.conf
 
     - name: Create .kube directory for the VM user
@@ -37,13 +47,13 @@
   tasks:
     - name: Join worker
       ansible.builtin.command:
-        cmd: "{{ hostvars[groups['control_plane'][0]].join_token.stdout }}"
+        cmd: "{{ hostvars[groups['control_plane_primary'][0]].join_token.stdout }}"
         creates: /etc/kubernetes/kubelet.conf
 
 - name: Install calico
   # The VM user has the admin kube config.
   become: false
-  hosts: control_plane
+  hosts: control_plane_primary
   tasks:
     - name: Download Calico operator manifest
       ansible.builtin.get_url:
@@ -68,7 +78,7 @@
 
 - name: Fetch kubeconfig for local kubectl/helm access
   become: false
-  hosts: control_plane
+  hosts: control_plane_primary
   tasks:
     # Fetched as a separate file so it never clobbers an existing
     # ~/.kube/config. Use it with:
