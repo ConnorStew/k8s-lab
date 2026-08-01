@@ -36,8 +36,8 @@ A HA variant with three control plane nodes behind an HAProxy VM, which becomes 
 
 | VM | Role | vCPUs | RAM | IP |
 |----|------|-------|-----|----|
-| `k8s-lb` | HAProxy (TCP :6443) | 2 | 1 GB | 192.168.122.9 |
-| `k8s-cp` | Control plane (first) | 2 | 4 GB | 192.168.122.10 |
+| `k8s-lb` | Load Balancer (HAProxy) | 2 | 1 GB | 192.168.122.9 |
+| `k8s-cp` | Control plane | 2 | 4 GB | 192.168.122.10 |
 | `k8s-cp2` | Control plane | 2 | 4 GB | 192.168.122.13 |
 | `k8s-cp3` | Control plane | 2 | 4 GB | 192.168.122.14 |
 | `k8s-w1` | Worker | 2 | 2 GB | 192.168.122.11 |
@@ -55,7 +55,7 @@ A HA variant with three control plane nodes behind an HAProxy VM, which becomes 
    - Initialises kubernetes nodes and joins them to the cluster.
    - Installs Calico via the Tigera operator, with the pod CIDR patched to
      `10.244.0.0/16` through the kustomization in [`calico/`](calico/)
-   - Fetches the admin kubeconfig to `~/.kube/k8s-lab.config` on the host.
+   - Copies the admin kubeconfig to `~/.kube/k8s-lab.config` on the host.
 
 ## Host requirements
 
@@ -94,7 +94,7 @@ Prompts once for the password the `debian` user gets:
 ./create-vms.sh --ha
 ```
 
-**3. Provision the cluster**:
+**3. Provision the cluster**
 
 ```shell
 # Default
@@ -107,12 +107,14 @@ ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-beco
 ansible-playbook -i ansible/inventory.ini -i ansible/inventory-ha.ini ansible/site.yml --ask-pass --ask-become-pass
 ```
 
-**4. Install the lab helm chart.**
+**4. Install the lab helm chart**
 ```shell
 cd helm/lab
 helm dependency build
 helm install lab . -n lab --create-namespace
 ```
+
+Currently deploys headlamp and metrics-server.
 
 The chart uses a NodePort service to expose the headlamp web UI, access it here: `http://<node-ip>:3007`
 
@@ -121,7 +123,7 @@ You'll need to generate a service account token for each login, using kubectl:
 kubectl create token headlamp -n lab
 ```
 
-**5. Access kubectl.** 
+**5. Access kubectl** 
 
 The playbook creates the admin kubeconfig on the host:
 ```shell
