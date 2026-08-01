@@ -44,7 +44,7 @@ plane + 1.5 GB worker, ~4.5 GB total) for lower-spec hosts.
    - installs containerd, kubelet, kubeadm, kubectl and extra clis, enables the CRI and
      `SystemdCgroup` in containerd, and turns on `ip_forward` (`prerequisites.yml`)
    - runs `kubeadm init` on the control plane, generates a join token, and
-     joins the workers (`kubernetes.yml`) — all guarded with `creates:` so
+     joins the workers (`kubernetes.yml`) - all guarded with `creates:` so
      re-runs are idempotent
    - installs Calico via the Tigera operator, with the pod CIDR patched to
      `10.244.0.0/16` through the kustomization in [`calico/`](calico/)
@@ -71,7 +71,7 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
     https://cdimage.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2
 ```
 
-**2. Create the VMs** — prompts once for the password the `debian` user gets:
+**2. Create the VMs** - prompts once for the password the `debian` user gets:
 
 ```shell
 ./create-vms.sh                # 3-node cluster
@@ -81,18 +81,15 @@ curl -Lo isos/debian-13-generic-amd64.qcow2 \
 
 **3. Provision the cluster**:
 
-- Default:
 ```shell
+
+# Default
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass
-```
 
-- Reduced Ram:
-```shell
+# Reduced Ram
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass --limit 'all:!k8s-w2'
-```
 
-- HA:
-```shell
+# HA
 ansible-playbook -i ansible/inventory.ini -i ansible/inventory-ha.ini ansible/site.yml --ask-pass --ask-become-pass
 ```
 
@@ -119,7 +116,7 @@ kubectl get nodes
 
 Or SSH straight in: `ssh debian@192.168.122.10`.
 
-**Teardown** — destroys the VMs, their disks, and the fetched kubeconfig
+**Teardown** - destroys the VMs, their disks, and the fetched kubeconfig
 (the base image is kept):
 
 ```shell
@@ -128,7 +125,7 @@ Or SSH straight in: `ssh debian@192.168.122.10`.
 
 ## Networking
 
-The VMs sit on libvirt's default NAT network (`192.168.122.0/24`) — they can
+The VMs sit on libvirt's default NAT network (`192.168.122.0/24`) - they can
 reach the internet, but are only reachable from the host.
 
 The pod network CIDR (`10.244.0.0/16`) must not overlap the VM network, and is
