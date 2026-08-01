@@ -35,20 +35,28 @@
         group: "{{ ansible_user }}"
         mode: '0600'
 
-    - name: Generate join token
-      register: join_token
+    - name: Upload control-plane certs and capture the key
+      ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+      register: upload_certs
+      changed_when: true
+
+    - name: Get the base join command
+      ansible.builtin.command: kubeadm token create --print-join-command
+      register: join_cmd
+      changed_when: false
+
+    - name: Build the control-plane join command
+      ansible.builtin.set_fact:
+        cp_join_cmd: >-
+          {{ join_cmd.stdout }}
+          --control-plane
+          --certificate-key {{ upload_certs.stdout_lines[-1] | trim }}
+
+    - name: Generate worker join command
+      register: worker_join_token
       changed_when: false
       ansible.builtin.command:
         cmd: kubeadm token create --print-join-command
-
-- name: Join worker nodes
-  become: true
-  hosts: workers
-  tasks:
-    - name: Join worker
-      ansible.builtin.command:
-        cmd: "{{ hostvars[groups['control_plane_primary'][0]].join_token.stdout }}"
-        creates: /etc/kubernetes/kubelet.conf
 
 - name: Install calico
   # The VM user has the admin kube config.
@@ -75,6 +83,24 @@
       until: apply_calico is succeeded
       retries: 10
       delay: 5
+
+- name: Join secondary control plane nodes
+  become: true
+  hosts: control_plane_secondary
+  tasks:
+    - name: Join secondary control plane node
+      ansible.builtin.command:
+        cmd: "{{ hostvars[groups['control_plane_primary'][0]].cp_join_cmd }}"
+        creates: /etc/kubernetes/kubelet.conf
+
+- name: Join worker nodes
+  become: true
+  hosts: workers
+  tasks:
+    - name: Join worker
+      ansible.builtin.command:
+        cmd: "{{ hostvars[groups['control_plane_primary'][0]].worker_join_token.stdout }}"
+        creates: /etc/kubernetes/kubelet.conf
 
 - name: Fetch kubeconfig for local kubectl/helm access
   become: false
