@@ -1,3 +1,15 @@
 ---
+# Kubernetes version - sets version of kubeadm install in prerequisites.yml.
+k8s_version: "1.35"
+
 # API server / control-plane port, shared by the HAProxy config and kubeadm.
 apiserver_port: 6443
+
+# Advertise/init address for the primary control plane, using in non ha setup.
+primary_apiserver_address: "{{ hostvars[groups['control_plane_primary'][0]].ansible_host }}"
+
+# Pod network CIDR passed to kubeadm init; must match the Calico patch in k8s-lab/calico/calico-patch.yaml.
+pod_network_cidr: 10.244.0.0/16
+
+# Calico release tag used for the tigera-operator manifest.
+calico_version: v3.32.1
