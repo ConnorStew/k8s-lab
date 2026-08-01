@@ -10,8 +10,8 @@ Two shell scripts manage the VM lifecycle; one Ansible run takes the nodes from 
 - **Network**: libvirt default NAT (`virbr0`, `192.168.122.0/24`)
 - **Runtime**: containerd (from Docker's apt repo, `SystemdCgroup` enabled)
 - **CNI**: Calico (operator install, pod CIDR patched via kustomize)
-- **VM user**: `debian`, password auth (set at VM-creation time, never stored)
-- **Kubernetes Version**: Set to 1.35, configurable in: `ansible/group_vars/all.yml`.
+- **VM user**: `debian`, password auth (set at VM-creation time)
+- **Kubernetes version**: Set to 1.35, configurable in `ansible/group_vars/all.yml`
 
 ### Default
 Default cluster configuration:
@@ -33,7 +33,7 @@ A reduced ram variant for lower spec hosts:
 
 
 ### HA
-A HA variant with three control plane nodes behind an HAProxy VM, which becomes the kubeadm control plane endpoint:
+An HA variant with three control plane nodes behind an HAProxy VM, which becomes the kubeadm control plane endpoint:
 
 | VM | Role | vCPUs | RAM | IP |
 |----|------|-------|-----|----|
@@ -46,14 +46,14 @@ A HA variant with three control plane nodes behind an HAProxy VM, which becomes 
 
 ## How it works
 
-1. **`create-vms.sh`** creates a qcow2 overlay per node on top of a single
-   shared base image (no disk duplication), builds a cloud-init seed ISO per
-   node (hostname, static IP, user + password hash), boots each VM with
-   `virt-install`, then polls with `ssh-keyscan` until every node is reachable
-   and its host key is in `known_hosts`.
+1. **`create-vms.sh`**:
+   - Creates a qcow2 overlay per node on top of a single shared base image (no disk duplication).
+   - Builds a cloud-init seed ISO per node (hostname, static IP, user + password hash).
+   - Boots each VM with `virt-install`.
+   - Polls with `ssh-keyscan` until every node is reachable and its host key is in `known_hosts`.
 2. **`ansible/site.yml`** then:
-   - Sets bash colors differently for VM roles to tell them apart easily when sshing.
-   - Installs prerequisites and any configuration needed for nodes and the load balancer, if using HA.
+   - Defaults to bash shell and sets bash colors differently for VM roles to tell them apart easily when sshing.
+   - Installs prerequisites and any configuration needed for nodes and the load balancer.
      - Includes `etcdctl`/`etcdutl` on control plane nodes for etcd backup/restore practice.
    - Initialises Kubernetes nodes and joins them to the cluster.
    - Installs Calico via the Tigera operator, with the pod CIDR patched to
@@ -65,9 +65,8 @@ A HA variant with three control plane nodes behind an HAProxy VM, which becomes 
 One-time setup, using Arch packages:
 
 ```shell
-sudo pacman -S qemu-full libvirt virt-install dnsmasq cloud-image-utils ansible kustomize helm kubectl
+sudo pacman -S qemu-full libvirt virt-install dnsmasq cloud-image-utils ansible kustomize helm kubectl sshpass
 sudo systemctl enable --now libvirtd
-sudo usermod -aG libvirt "$USER"
 ansible-galaxy collection install -r requirements.yml
 ```
 
@@ -78,8 +77,7 @@ ansible-galaxy collection install -r requirements.yml
 The lab uses a Debian cloud image, qcow2 flavour, saved into `isos/`:
 
 ```shell
-curl -Lo isos/debian-13-generic-amd64.qcow2 \
-    https://cdimage.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2
+curl -Lo isos/debian-13-generic-amd64.qcow2 https://cdimage.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2
 ```
 
 **2. Create the VMs**
@@ -90,8 +88,8 @@ Prompts once for the password the `debian` user gets:
 # Default
 ./create-vms.sh
 
-# Reduced Ram
-./create-vms.sh --reduced-ram 
+# Reduced RAM
+./create-vms.sh --reduced-ram
 
 # HA
 ./create-vms.sh --ha
@@ -103,15 +101,24 @@ Prompts once for the password the `debian` user gets:
 # Default
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass
 
-# Reduced Ram
+# Reduced RAM
 ansible-playbook -i ansible/inventory.ini ansible/site.yml --ask-pass --ask-become-pass --limit 'all:!k8s-w2'
 
 # HA
 ansible-playbook -i ansible/inventory.ini -i ansible/inventory-ha.ini ansible/site.yml --ask-pass --ask-become-pass
 ```
 
-**4. Install the lab helm chart**
+**4. Access kubectl**
+
+The playbook creates the admin kubeconfig on the host:
 ```shell
+export KUBECONFIG=~/.kube/k8s-lab.config
+kubectl get nodes
+```
+
+**5. Install the lab helm chart**
+```shell
+export KUBECONFIG=~/.kube/k8s-lab.config
 helm dependency build helm/lab
 helm install lab helm/lab -n lab --create-namespace
 ```
@@ -125,14 +132,6 @@ You'll need to generate a service account token for each login, using kubectl:
 kubectl create token headlamp -n lab
 ```
 
-**5. Access kubectl** 
-
-The playbook creates the admin kubeconfig on the host:
-```shell
-export KUBECONFIG=~/.kube/k8s-lab.config
-kubectl get nodes
-```
-
 **Teardown**
 
 This shell script destroys the VMs, their disks, and the fetched kubeconfig (the base image is kept):
@@ -142,7 +141,7 @@ This shell script destroys the VMs, their disks, and the fetched kubeconfig (the
 
 ## Networking
 
-The VMs sit on libvirt's default NAT network (`192.168.122.0/24`) - they can reach the internet, but are only reachable from the host.
+The VMs sit on libvirt's default NAT network (`192.168.122.0/24`), so they can reach the internet, but are only reachable from the host.
 
 The pod network CIDR (`10.244.0.0/16`) must not overlap the VM network, and is set in two places that have to match: `ansible/group_vars/all.yml` and the kustomize patch in `calico/calico-patch.yaml`.
 

@@ -34,7 +34,7 @@ declare -A NODE_IPS=(
 
 case "$TOPOLOGY" in
     reduced-ram)
-        echo "Using reduced RAM configuration (2-node cluster, 4.5 GB total)"
+        echo "Using reduced RAM configuration"
         declare -A NODE_MEM=(
             [k8s-cp]=3072
             [k8s-w1]=1536
@@ -42,7 +42,7 @@ case "$TOPOLOGY" in
         NODES=(k8s-cp k8s-w1)
         ;;
     ha)
-        echo "Using HA configuration (6-node cluster, ~17 GB total)"
+        echo "Using HA configuration"
         declare -A NODE_MEM=(
             [k8s-lb]=1024
             [k8s-cp]=4096
