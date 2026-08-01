@@ -59,7 +59,7 @@ A HA variant with three control plane nodes behind an HAProxy VM, which becomes 
 
 ## Host requirements
 
-One-time setup (package names are Arch's; `virt-manager` is an optional GUI):
+One-time setup, using Arch packages:
 
 ```shell
 sudo pacman -S qemu-full libvirt virt-install dnsmasq cloud-image-utils ansible kustomize
