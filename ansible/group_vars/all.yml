@@ -1,0 +1,3 @@
+---
+# API server / control-plane port, shared by the HAProxy config and kubeadm.
+apiserver_port: 6443

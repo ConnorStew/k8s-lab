@@ -5,9 +5,9 @@
   vars:
     # Use the load balancer IP if in ha, otherwise use the single control plane node.
     control_plane_endpoint: >-
-      {{ hostvars[groups['load_balancer'][0]].ansible_host
-         if groups['load_balancer'] | length > 0
-         else apiserver_address }}
+      {{ (hostvars[groups['load_balancer'][0]].ansible_host
+          if groups['load_balancer'] | length > 0
+          else apiserver_address) ~ ':' ~ apiserver_port }}
   tasks:
     - name: Kube adm init
       ansible.builtin.command:

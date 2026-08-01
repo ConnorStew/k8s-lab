@@ -2,8 +2,6 @@
 - name: Install prerequisites
   become: true
   hosts: load_balancer
-  vars:
-    apiserver_port: 6443
 
   handlers:
     - name: Reload HAProxy
