@@ -132,7 +132,7 @@ You'll need to generate a service account token for each login, using kubectl:
 kubectl create token headlamp -n lab
 ```
 
-**Teardown**
+## Teardown
 
 This shell script destroys the VMs, their disks, and the fetched kubeconfig (the base image is kept):
 ```shell
